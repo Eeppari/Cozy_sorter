@@ -1,0 +1,604 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Cozy Sorter</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Nunito:wght@400;600;800&display=swap">
+<style>
+/* Layout: one centered column. Page tabs, a ruled inbox sheet of loose item stacks, and a cabinet pinned to the bottom with 7 main drawers and a tray of 4 folders. */
+:root{
+  --bg:#e4e9df;
+  --panel:#f3f5ee;
+  --paper:#fbfaf3;
+  --rule:#e6e8dc;
+  --ink:#2c3830;
+  --muted:#66746a;
+  --line:#c3cdba;
+  --accent:#c98a2e;
+  --accent-ink:#ffffff;
+  --shadow:rgba(44,56,48,.16);
+  --font-display:"Fraunces",Georgia,"Times New Roman",serif;
+  --font-body:"Nunito",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#1d2421;--panel:#27302c;--paper:#2e3833;--rule:#344039;--ink:#e9ecdf;--muted:#9fafa3;--line:#3c4943;--accent:#e8b45e;--accent-ink:#1d2421;--shadow:rgba(0,0,0,.35);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1d2421;--panel:#27302c;--paper:#2e3833;--rule:#344039;--ink:#e9ecdf;--muted:#9fafa3;--line:#3c4943;--accent:#e8b45e;--accent-ink:#1d2421;--shadow:rgba(0,0,0,.35);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{
+  background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:16px;line-height:1.45;
+  padding-block:20px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  overflow-x:hidden;
+}
+.wrap{max-width:800px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+h1{font-family:var(--font-display);font-weight:700;font-size:clamp(26px,5vw,34px);margin:0;letter-spacing:-.01em}
+.tools{display:flex;gap:8px}
+.ghost{background:transparent;border:1.5px solid var(--line);color:var(--muted);border-radius:999px;padding:6px 14px;font:inherit;font-weight:600;font-size:14px;cursor:pointer}
+.ghost:hover{color:var(--ink);border-color:var(--muted)}
+button:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+
+.progress{display:flex;flex-direction:column;gap:6px}
+.counts{display:flex;justify-content:space-between;gap:4px 16px;font-size:14px;color:var(--muted);font-variant-numeric:tabular-nums;flex-wrap:wrap}
+.counts b{color:var(--ink);font-weight:800}
+.wallet{display:flex;gap:12px;flex-wrap:wrap}
+.bar{height:10px;border-radius:999px;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--accent);border-radius:999px;transition:width .35s ease}
+
+.pagebar{display:flex;align-items:center;gap:8px}
+.tabs{display:flex;gap:4px;flex:1;min-width:0;overflow-x:auto;padding-top:4px;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:0 0 auto;min-width:34px;height:32px;border:1.5px solid var(--line);border-bottom:0;border-radius:10px 10px 0 0;background:var(--panel);color:var(--muted);font:inherit;font-weight:800;font-size:13px;cursor:pointer;font-variant-numeric:tabular-nums;position:relative}
+.tab.on{background:var(--paper);color:var(--ink);height:36px}
+.tab.done{opacity:.5}
+.tab.done::after{content:"";position:absolute;right:4px;top:4px;width:6px;height:6px;border-radius:50%;background:var(--accent)}
+.nav{width:34px;height:34px;flex:0 0 auto;border-radius:50%;border:1.5px solid var(--line);background:var(--panel);color:var(--ink);font:inherit;font-weight:800;cursor:pointer}
+.nav:disabled{opacity:.35;cursor:default}
+.pagelabel{flex:1;text-align:center;font-weight:800;font-size:14px;color:var(--muted);font-variant-numeric:tabular-nums}
+
+.sheet{position:relative;background:var(--paper);border:1.5px solid var(--line);border-radius:0 14px 18px 18px;padding:14px 14px 20px;box-shadow:0 8px 24px var(--shadow);
+  background-image:repeating-linear-gradient(transparent 0 33px,var(--rule) 33px 34px);min-height:240px}
+.sheethead{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.sheethead h2{font-family:var(--font-display);font-size:20px;margin:0;font-weight:700}
+.sheethead span{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:14px 12px}
+.cell{min-height:78px;border-radius:8px;position:relative}
+.cell.empty{border:2px dashed var(--line);opacity:.6}
+.slip{--rar:#9aa79c;position:relative;z-index:1;background:var(--panel);border:1.5px solid var(--line);border-left:5px solid var(--rar);border-radius:8px;padding:8px 10px;min-height:78px;display:flex;flex-direction:column;justify-content:center;gap:1px;
+  box-shadow:0 2px 0 var(--line),0 10px 12px var(--shadow);cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;rotate:var(--r,0deg)}
+.slip small{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:800}
+.slip b{font-family:var(--font-display);font-size:15px;font-weight:700;line-height:1.15;overflow-wrap:anywhere}
+.slip .cnt{position:absolute;right:8px;top:6px;font-style:normal;font-weight:800;font-size:14px;color:var(--ink);font-variant-numeric:tabular-nums}
+.slip.sel{box-shadow:0 0 0 3px var(--accent),0 10px 12px var(--shadow)}
+.slip.drag{cursor:grabbing;z-index:50;scale:1.06}
+.cleared{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;border-radius:inherit}
+.cleared span{font-family:var(--font-display);font-size:clamp(26px,6vw,38px);font-weight:700;color:var(--accent);border:4px solid var(--accent);border-radius:12px;padding:4px 18px;rotate:-6deg;opacity:.9;background:var(--paper)}
+
+.hint{min-height:44px;font-size:14px;color:var(--muted);text-align:center;display:flex;align-items:center;justify-content:center}
+
+.cabinet{position:sticky;bottom:0;z-index:30;background:var(--panel);border:1.5px solid var(--line);border-radius:18px;padding:10px;box-shadow:0 -8px 24px var(--shadow);display:flex;flex-direction:column;gap:8px}
+.mains{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.main,.sub{position:relative;appearance:none;font:inherit;color:inherit;cursor:pointer;text-align:center;background:var(--paper);border:2.5px solid var(--line);border-radius:10px;padding:0 4px 7px;display:flex;flex-direction:column;align-items:center;gap:3px;overflow:hidden;transition:transform .15s,border-color .15s}
+.main .band{display:block;width:calc(100% + 8px);height:9px;margin:0 -4px 4px}
+.main .name,.sub .name{font-family:var(--font-display);font-weight:700;font-size:clamp(12px,1.9vw,15px);line-height:1.1;overflow-wrap:anywhere}
+.main .num,.sub .num{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.meter{display:block;width:80%;height:5px;border-radius:99px;background:var(--line);overflow:hidden}
+.meter i{display:block;height:100%;width:0;border-radius:99px;transition:width .4s cubic-bezier(.3,1.4,.5,1)}
+.key{font-size:10px;font-weight:800;color:var(--muted);border:1.5px solid var(--line);border-radius:5px;padding:0 5px}
+.main.open{border-color:var(--accent);background:var(--panel)}
+.main.over,.sub.over{border-color:var(--accent);transform:translateY(-3px) scale(1.03)}
+.main.pop,.sub.pop{animation:jiggle .45s}
+.tray{display:flex;flex-direction:column;gap:6px}
+.trayhead{font-size:12px;color:var(--muted);font-weight:800;letter-spacing:.08em;text-transform:uppercase;display:flex;gap:6px;align-items:center}
+.trayhead b{color:var(--ink);font-family:var(--font-display);letter-spacing:0;text-transform:none;font-size:15px}
+.subs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.sub{padding-top:7px}
+.ability{display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid var(--line);padding-top:8px}
+.abilitycopy{display:flex;flex-direction:column;min-width:0}
+.abilitycopy b{font-family:var(--font-display);font-size:15px}
+.abilitycopy span{font-size:12px;color:var(--muted)}
+.abilityactions{display:flex;gap:6px;flex:0 0 auto}
+.abilityactions button{background:var(--paper);border:1.5px solid var(--line);border-radius:999px;padding:6px 10px;color:var(--ink);font:inherit;font-size:12px;font-weight:800;cursor:pointer}
+.abilityactions button:disabled{opacity:.45;cursor:default}
+@keyframes jiggle{0%{transform:scale(1)}30%{transform:scale(1.07,.94)}60%{transform:scale(.97,1.04)}100%{transform:scale(1)}}
+@media (max-width:560px){
+  .mains{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .grid{grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:12px 10px}
+  .slip{padding:7px 8px;min-height:72px}
+  .slip b{font-size:13px}
+  .slip .cnt{font-size:13px;right:6px}
+  .cabinet{padding:8px;gap:6px}
+  .main .meter,.sub .meter,.main .key,.sub .key{display:none}
+  .main,.sub{padding-bottom:5px;gap:1px}
+  .main .band{height:7px;margin-bottom:3px}
+  .trayhead span{display:none}
+}
+
+.end{position:fixed;inset:0;z-index:100;display:grid;place-items:center;background:rgba(20,26,23,.55);padding:16px}
+.end[hidden]{display:none!important}
+.card{background:var(--panel);border-radius:28px;padding:28px;max-width:440px;width:100%;display:flex;flex-direction:column;gap:14px;box-shadow:0 20px 60px var(--shadow)}
+.card h2{font-family:var(--font-display);font-size:30px;margin:0;text-wrap:balance}
+.card p{margin:0;color:var(--muted)}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;font-variant-numeric:tabular-nums}
+.stats div{background:var(--bg);border-radius:14px;padding:10px 12px}
+.stats b{display:block;font-family:var(--font-display);font-size:22px}
+.stats span{font-size:12px;color:var(--muted)}
+.primary{background:var(--accent);color:var(--accent-ink);border:0;border-radius:999px;padding:12px 20px;font:inherit;font-weight:800;cursor:pointer}
+@media (prefers-reduced-motion:reduce){.main,.sub,.meter i,.bar i{transition:none}.main.pop,.sub.pop{animation:none}}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Cozy Sorter</h1>
+    <div class="tools"><button class="ghost" id="mute" type="button" aria-pressed="false">Sound on</button><button class="ghost" id="restart" type="button">Start over</button></div>
+  </header>
+
+  <div class="progress">
+    <div class="counts"><span><b id="copies">0</b> of <b id="totalcopies">0</b> items filed</span><span class="wallet">Sortcoins <b id="sortcoins">0</b> · Completion Coins <b id="completioncoins">0</b></span><span>Streak <b id="streak">0</b></span></div>
+    <div class="bar" role="progressbar" aria-label="Items filed"><i id="barfill"></i></div>
+  </div>
+
+  <div>
+    <div class="pagebar">
+      <button class="nav" id="prev" type="button" aria-label="Previous page">&lsaquo;</button>
+      <div class="pagelabel" id="pagelabel"></div>
+      <button class="nav" id="next" type="button" aria-label="Next page">&rsaquo;</button>
+    </div>
+    <div class="sheet" id="sheet">
+      <div class="sheethead"><h2 id="pagetitle">Unsorted page 1</h2><span id="pageleft"></span></div>
+      <div class="grid" id="grid"></div>
+    </div>
+  </div>
+
+  <div class="hint" id="hint" aria-live="polite"></div>
+
+  <div class="cabinet">
+    <div class="mains" id="mains"></div>
+    <div class="tray">
+      <div class="trayhead"><span>Open drawer</span><b id="trayname"></b></div>
+      <div class="subs" id="subs"></div>
+      <div class="ability">
+        <div class="abilitycopy"><b>Item Summon <span id="summonlevel">Locked</span></b><span id="summondesc">Select an item, then summon matching copies onto this page.</span></div>
+        <div class="abilityactions"><button id="summon" type="button" disabled>Summon</button><button id="upgrade" type="button">Unlock · 3 Completion Coins</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="end" id="end" hidden>
+  <div class="card" role="dialog" aria-labelledby="endtitle">
+    <h2 id="endtitle">Every shelf is stocked.</h2>
+    <p id="endsub"></p>
+    <div class="stats">
+      <div><b id="s-items">0</b><span>items filed</span></div>
+      <div><b id="s-time">0:00</b><span>time</span></div>
+      <div><b id="s-acc">0%</b><span>right first try</span></div>
+      <div><b id="s-best">0</b><span>best streak</span></div>
+    </div>
+    <button class="primary" id="again" type="button">Sort again</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  var PER_PAGE = 20;
+  var MIN_COPIES = 4, MAX_COPIES = 30;
+  var PROGRESS_KEY = 'cozy-sorter-progress-v1';
+
+  // 7 main categories x 4 subfolders x 20 item types = 560 stacks
+  var TREE = [
+    {name:'Armour', color:'#e79b9b', subs:[
+      {name:'Helmets', items:['Leather Cap','Iron Helm','Steel Greathelm',"Knight's Visor",'Viking Horned Helm',"Mage's Hood","Ranger's Cowl",'Bronze Kettle Helm','Gladiator Crest Helm','Dragonscale Helm','Padded Coif','Chainmail Coif','Silver Circlet','Crusader Helm','Shadow Hood','Feathered Cap','Runed Crown','Wolf Pelt Hood','Mithril Sallet','Crown of Embers']},
+      {name:'Chestplates', items:['Padded Gambeson','Leather Jerkin','Chainmail Hauberk','Iron Cuirass','Steel Breastplate','Scale Mail Vest','Paladin Plate',"Mage's Robe","Hunter's Vest",'Dragonhide Tunic','Quilted Vest','Brigandine Coat','Mithril Hauberk','Frostguard Armor','Phoenix Scale Mail','Enchanted Mantle',"Warden's Breastplate",'Obsidian Cuirass','Royal Guard Armor','Tunic of the Oak']},
+      {name:'Leggings', items:['Cloth Trousers','Leather Pants','Chain Leggings','Iron Greaves','Steel Cuisses','Padded Breeches','Scale Leggings',"Ranger's Trousers",'Paladin Legplates','Dragonhide Chaps','Woolen Leggings','Brigandine Chausses','Mithril Greaves','Frostguard Leggings','Shadowstalker Legwear','Phoenix Scale Leggings',"Warden's Cuisses",'Obsidian Greaves','Royal Guard Legplates','Trousers of the Oak']},
+      {name:'Boots', items:['Leather Boots','Iron Sabatons','Steel Stompers','Wool-Lined Boots',"Ranger's Moccasins",'Sandals of Swiftness','Chain Boots',"Mage's Slippers",'Dragonhide Boots','Winged Boots','Fur-Lined Boots','Mithril Treads','Frostwalker Boots','Shadowstep Shoes','Phoenix Talon Greaves',"Warden's Boots",'Obsidian Sabatons','Royal Guard Stompers','Boots of the Oak','Cloudrunner Shoes']}
+    ]},
+    {name:'Weapons', color:'#e6a76e', subs:[
+      {name:'Bows', items:['Shortbow','Longbow','Recurve Bow',"Hunter's Bow",'Composite Bow','Elven Bow','Crossbow','Heavy Crossbow','Hand Crossbow','Dragonbone Bow','Yew Longbow','Ashwood Bow','Moonlit Bow','Warbow','Whispering Bow','Stormstring Bow','Gilded Crossbow','Repeating Crossbow','Sylvan Bow','Bow of the Phoenix']},
+      {name:'Daggers', items:['Rusty Dagger','Iron Dirk','Steel Stiletto','Throwing Knife',"Assassin's Kris",'Parrying Dagger','Bone Knife','Venomfang Dagger','Silver Poniard','Dragontooth Dagger','Copper Shiv','Glassfang Knife','Moonsteel Dirk','Shadowfang','Twinblade Dagger','Frostbite Stiletto','Ceremonial Kris','Whispering Blade','Obsidian Knife','Dagger of the Lynx']},
+      {name:'Swords', items:['Wooden Practice Sword','Iron Shortsword','Steel Longsword','Broadsword','Cavalry Saber','Katana','Rapier','Claymore','Scimitar','Dragonsteel Greatsword','Falchion','Mithril Shortsword',"Knight's Arming Sword",'Runeblade','Frostbrand','Sunsteel Saber',"Duelist's Foil",'Mooncleaver','Obsidian Edge','Sword of the Dawn']},
+      {name:'Staffs', items:['Oak Staff','Walking Staff','Apprentice Staff','Fire Staff','Frost Staff','Lightning Staff',"Healer's Crook","Druid's Staff","Necromancer's Staff","Archmage's Staff",'Birchwood Wandstaff','Crystal Focus Staff','Stormcaller Rod','Thornwood Staff','Sunfire Scepter','Glacier Branch','Astral Conduit','Verdant Rootstaff','Obsidian Channeler','Staff of the Ancients']}
+    ]},
+    {name:'Potions', color:'#c3a6dc', subs:[
+      {name:'Healing', items:['Minor Healing Potion','Healing Potion','Greater Healing Potion','Superior Healing Potion','Regeneration Draught','Phoenix Tears','Restorative Salve','Antidote','Cure-All Tonic','Lifeblood Vial','Vitality Flask','Soothing Balm','Trollblood Tonic','Sunpetal Salve','Heartfire Elixir','Woundstitch Poultice','Moonwell Water','Renewal Draught','Phoenixheart Serum','Dawnlight Remedy']},
+      {name:'Mana', items:['Minor Mana Potion','Mana Potion','Greater Mana Potion','Superior Mana Potion','Arcane Draught','Moonwater','Spirit Tonic','Starlight Essence','Mana Crystal Tonic',"Archmage's Reserve",'Aether Flask','Bluecap Brew','Runic Refill','Astral Nectar',"Spellweaver's Tonic","Sage's Infusion",'Wispfire Essence','Voidwell Vial','Deepwell Elixir','Arcane Springwater']},
+      {name:'Elixirs', items:['Elixir of Strength','Elixir of Speed','Elixir of Fortitude','Elixir of Sight','Elixir of Stealth','Elixir of Luck','Elixir of Fire Resistance','Elixir of Water Breathing','Elixir of Giants','Elixir of Wisdom','Elixir of Night Vision',"Elixir of Eagle's Grace",'Elixir of Stone Skin',"Elixir of Cat's Balance",'Elixir of Frost Resistance','Elixir of Keen Hearing','Elixir of Boundless Energy','Elixir of True Aim','Elixir of Featherfall','Elixir of the Wild']},
+      {name:'Poisons', items:['Weak Poison','Nightshade Extract','Viper Venom','Paralytic Toxin','Sleeping Draught','Spiderfang Venom','Rotroot Brew',"Witch's Bane",'Scorpion Sting Oil','Blackheart Poison','Basilisk Venom','Frostbite Toxin','Widowmaker Extract','Dreamshade Poison','Ashen Adder Venom','Wraithroot Tincture','Gloomthorn Sap','Blindness Phial',"Serpent's Kiss",'Kingsbane Concentrate']}
+    ]},
+    {name:'Food', color:'#f1cf7c', subs:[
+      {name:'Meals', items:['Hearty Stew','Roast Chicken','Venison Steak','Fish Pie','Mushroom Soup','Meat Skewer',"Shepherd's Pie",'Dumpling Bowl','Roast Boar',"Travelers' Porridge",'Potato and Leek Soup','Smoked Trout Plate','Wild Mushroom Risotto','Braised Rabbit','Root Vegetable Hotpot','Herb-Crusted Salmon','Roasted Pheasant','Lentil and Barley Bowl','Stuffed Bell Peppers',"Campfire Shepherd's Pie"]},
+      {name:'Baked', items:['Crusty Bread','Honey Cake','Berry Tart','Cinnamon Roll','Cheese Bread','Apple Pie','Gingerbread Man','Oat Biscuit','Pumpkin Loaf','Honeyed Scone','Rye Seed Loaf','Lemon Drizzle Cake','Blackberry Crumble','Butter Croissant','Walnut Tea Cake','Rosemary Focaccia','Plum Turnover','Ginger Oat Cookies','Chestnut Buns','Spiced Pear Galette']},
+      {name:'Produce', items:['Red Apple','Golden Pear','Wild Strawberry','Blueberries','Carrot','Turnip','Pumpkin','Cabbage','Sweet Corn','Plump Tomato','Blackcurrants','Golden Beet','Wild Leeks','Snow Peas','Purple Carrot','Quince','Cloudberries','Fennel Bulb','Red Onions','Sun-Ripened Melon']},
+      {name:'Drinks', items:['Mulled Cider','Spiced Mead','Hot Cocoa','Herbal Tea','Elderflower Cordial','Apple Juice','Goat Milk','Dwarven Ale','Berry Wine','Honey Milk','Roasted Barley Tea','Mint Lemonade','Juniper Tonic','Peach Nectar','Rosehip Tea','Clover Honey Brew','Sparkling Grape Juice','Vanilla Cream Milk','Witch Hazel Tea','Warm Spiced Pear Cider']}
+    ]},
+    {name:'Tools', color:'#90b9d9', subs:[
+      {name:'Mining', items:['Stone Pickaxe','Iron Pickaxe','Steel Pickaxe','Dwarven Pickaxe',"Miner's Lantern",'Rock Hammer','Ore Sieve','Blasting Keg','Mine Cart Wheel','Rope and Pulley','Mithril Pickaxe','Gemstone Chisel',"Surveyor's Compass",'Ore Sample Kit','Deep Mine Helmet','Crystal Resonator','Tunnel Brace','Portable Smelter','Geode Cracker',"Miner's Grappling Hook"]},
+      {name:'Farming', items:['Wooden Hoe','Iron Hoe','Watering Can','Seed Pouch','Scythe','Pitchfork','Garden Trowel','Harvest Basket','Scarecrow','Beehive Smoker','Pruning Shears','Hand Plow','Compost Fork','Seed Drill','Grafting Knife','Irrigation Sprinkler','Orchard Ladder','Berry Picker','Grain Flail','Root Digger']},
+      {name:'Fishing', items:['Wooden Fishing Rod','Bamboo Rod','Steel Rod','Fishing Net','Bait Box','Line Spool','Tackle Box','Fish Hook Set','Crab Trap','Harpoon','Reinforced Fly Rod','Ice Fishing Auger','Landing Net','Float Set','Lure Case','Gill Net','Deepwater Reel','Eel Spear','Wicker Fish Basket','River Finder']},
+      {name:'Crafting', items:['Sewing Needle','Anvil','Forge Tongs','Smithing Hammer','Spinning Wheel','Loom Shuttle','Whetstone','Carving Knife','Mortar and Pestle','Cauldron','Leatherworking Awl',"Glassblower's Pipe",'Wooden Mallet',"Jeweler's Loupe","Potter's Rib",'Bookbinding Press','Rune Engraver','Dyeing Vat','Candle Mold','Alchemy Retort']}
+    ]},
+    {name:'Materials', color:'#9cc08f', subs:[
+      {name:'Ores', items:['Copper Ore','Tin Ore','Iron Ore','Silver Ore','Gold Ore','Coal Chunk','Mithril Ore','Adamantite Ore','Titanium Ore','Moonsteel Ore','Cobalt Ore','Nickel Ore','Platinum Ore','Obsidian Shard','Starfall Iron','Sunstone Ore','Froststeel Vein','Shadow Ore','Aetherium Nugget','Meteoric Silver']},
+      {name:'Gems', items:['Ruby','Sapphire','Emerald','Amethyst','Topaz','Diamond','Opal','Onyx','Garnet','Moonstone','Aquamarine','Citrine','Peridot','Lapis Lazuli','Rose Quartz','Bloodstone','Fire Agate','Labradorite','Black Tourmaline','Celestial Pearl']},
+      {name:'Herbs', items:['Moonpetal','Ghostroot','Sunblossom','Ember Moss','Frostleaf','Bloodthistle','Silverfern','Dreamlily','Wolfsbane','Starflower','Mandrake Root','Blue Sage','Golden Yarrow','Bittercress','Honeysuckle Sprig','Ghost Orchid','Ironbark Leaf','Wild Thyme','Crimson Poppy','Duskcap Mushroom']},
+      {name:'Fabrics', items:['Linen Cloth','Wool Bolt','Silk Cloth','Velvet Roll','Spider Silk','Leather Hide','Cotton Bundle','Moonweave','Dragonhide Scrap','Felt Sheet','Hemp Canvas','Brocade Panel','Cashmere Yarn','Satin Ribbon','Tanned Elk Hide','Enchanted Thread','Burlap Roll','Lace Trim','Fleece Bundle','Starlight Fabric']}
+    ]},
+    {name:'Accessories', color:'#7fc4c0', subs:[
+      {name:'Rings', items:['Copper Ring','Silver Band','Ring of Protection','Ring of Haste','Ring of Vigor','Signet Ring','Ruby Ring','Emerald Band','Ring of Invisibility',"Dragon's Ring",'Sapphire Signet','Band of the Hearth','Ring of True Aim','Moonstone Loop',"Warden's Seal",'Ring of Clear Thought','Golden Knot Ring','Frostfire Band','Ring of Featherstep','Twilight Circlet']},
+      {name:'Amulets', items:['Bone Amulet','Amulet of Warding','Sun Pendant','Moon Pendant','Locket','Lucky Charm Necklace','Amulet of Vigor','Silver Talisman','Pearl Necklace','Dragon Tooth Pendant','Amber Heart Pendant','Amulet of Far Sight','Crescent Moon Charm','Talisman of the Grove','Starfall Medallion','Amulet of Safe Passage','Elderwood Locket','Cobalt Ward','Pendant of Serenity','Sunrise Reliquary']},
+      {name:'Belts', items:['Leather Belt','Rope Belt','Studded Belt',"Warrior's Girdle",'Belt of Strength','Silk Sash','Dwarven Belt','Utility Belt','Quiver Belt',"Champion's Belt",'Woven Herb Belt','Ironclasp Girdle',"Adventurer's Harness",'Belt of Quickdraw','Moonweave Sash',"Pouchmaker's Belt",'Frosthide Girdle',"Blacksmith's Apron Belt","Trailwarden's Strap",'Belt of the Deep Mines']},
+      {name:'Cloaks', items:["Traveler's Cloak",'Wool Cloak','Hooded Cloak','Fox-Fur Mantle',"Ranger's Cloak","Mage's Cape",'Royal Mantle','Shadow Cloak','Frostwolf Cloak','Dragonwing Cape','Rainward Cloak',"Stargazer's Mantle",'Mossweave Cape','Emberfall Shawl',"Warden's Traveling Cloak",'Cloak of Quiet Steps','Moonlit Veil','Highland Plaid','Featherfall Mantle','Cloak of the First Snow']}
+    ]}
+  ];
+  var SUB_KEYS = ['A','S','D','F'];
+
+  function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+  function rarity(n){ return n<=5?['Epic','#a074c9'] : n<=8?['Rare','#5b8fc9'] : n<=13?['Uncommon','#6fae6f'] : ['Common','#9aa79c']; }
+
+  var $=function(id){return document.getElementById(id)};
+  var items=[], pageContents=[], pages=0, page=0, streak=0, best=0, firstTry=0, stacksFiled=0, copiesFiled=0, totalCopies=0, startedAt=0;
+  var selected=-1, openMain=0, finished=false, dragMoved=false, muted=false, attempted={};
+  var slipEls={}, mainEls=[], subEls=[], mainCounts=[], subCounts=[], mainTotals=[], subTotals=[];
+  var progress={sortCoins:0,completionCoins:0,summonLevel:0}, typeTotals=[], typeFiled=[], nextTypeId=0;
+
+  // ---- Sound
+  var ac=null;
+  function tone(freq,end,dur,type,gain,delay){
+    if(muted) return;
+    try{
+      ac=ac||new (window.AudioContext||window.webkitAudioContext)();
+      var t=ac.currentTime+(delay||0), o=ac.createOscillator(), g=ac.createGain();
+      o.type=type; o.frequency.setValueAtTime(freq,t); o.frequency.exponentialRampToValueAtTime(end,t+dur);
+      g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(gain,t+0.015); g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+      o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t+dur+0.02);
+    }catch(e){}
+  }
+  function plop(){var b=360+Math.min(streak,12)*28; tone(b*1.5,b*0.7,0.16,'sine',0.14); tone(b*2,b*1.2,0.1,'sine',0.04,0.03);}
+  function nope(){tone(230,170,0.22,'triangle',0.07);}
+  function ding(){tone(740,900,0.14,'sine',0.07);}
+  function chime(){[523,659,784,1047].forEach(function(f,k){tone(f,f*0.995,0.9,'sine',0.08,k*0.16)});}
+  function pageDone(){tone(659,880,0.25,'sine',0.08); tone(880,1100,0.3,'sine',0.06,0.12);}
+  var progressWarning='';
+  function say(t){$('hint').textContent=progressWarning?t+' '+progressWarning:t;}
+
+  // ---- Build
+  function build(){
+    var rnd=mulberry32((Date.now()^0x5bd1e995)>>>0);
+    items=[]; pageContents=[]; totalCopies=0; typeTotals=[]; typeFiled=[]; nextTypeId=0;
+    mainTotals=TREE.map(function(){return 0}); subTotals=TREE.map(function(m){return m.subs.map(function(){return 0})});
+    TREE.forEach(function(m,mi){m.subs.forEach(function(s,si){s.items.forEach(function(name){
+      var typeId=nextTypeId++;
+      var c=MIN_COPIES+Math.floor(rnd()*(MAX_COPIES-MIN_COPIES+1)), rr=rarity(c);
+      typeTotals[typeId]=c; typeFiled[typeId]=0;
+      for(var q=0;q<c;q++) items.push({id:0,typeId:typeId,name:name,main:mi,sub:si,rar:rr,done:false,r:0});
+      mainTotals[mi]+=c; subTotals[mi][si]+=c;
+    })})});
+    totalCopies=items.length;
+    for(var k=items.length-1;k>0;k--){var j=Math.floor(rnd()*(k+1)); var t=items[k]; items[k]=items[j]; items[j]=t;}
+    items.forEach(function(it,n){
+      it.id=n; it.page=Math.floor(n/PER_PAGE); it.r=(rnd()*4-2).toFixed(1)+'deg';
+      if(!pageContents[it.page]) pageContents[it.page]=[];
+      pageContents[it.page].push(it);
+    });
+    pages=Math.ceil(items.length/PER_PAGE);
+    mainCounts=TREE.map(function(){return 0});
+    subCounts=TREE.map(function(m){return m.subs.map(function(){return 0})});
+  }
+  function buildMains(){
+    var box=$('mains'); box.innerHTML=''; mainEls=[];
+    TREE.forEach(function(m,n){
+      var b=document.createElement('button'); b.type='button'; b.className='main'; b.setAttribute('aria-label',m.name+', key '+(n+1));
+      b.innerHTML='<span class="band" style="background:'+m.color+'"></span><span class="name">'+m.name+'</span><span class="num">0 / '+mainTotals[n]+'</span><span class="meter"><i style="background:'+m.color+'"></i></span><span class="key">'+(n+1)+'</span>';
+      b.addEventListener('click',function(){ if(dragMoved) return; chooseMain(n,selected); });
+      box.appendChild(b); mainEls.push(b);
+    });
+  }
+  function renderTray(){
+    var m=TREE[openMain];
+    $('trayname').textContent=m.name;
+    mainEls.forEach(function(e,n){e.classList.toggle('open',n===openMain)});
+    var box=$('subs'); box.innerHTML=''; subEls=[];
+    m.subs.forEach(function(s,n){
+      var b=document.createElement('button'); b.type='button'; b.className='sub'; b.setAttribute('aria-label',s.name+', key '+SUB_KEYS[n]);
+      b.innerHTML='<span class="name">'+s.name+'</span><span class="num">'+subCounts[openMain][n]+' / '+subTotals[openMain][n]+'</span><span class="meter"><i style="background:'+m.color+';width:'+(subCounts[openMain][n]/subTotals[openMain][n]*100)+'%"></i></span><span class="key">'+SUB_KEYS[n]+'</span>';
+      b.addEventListener('click',function(){ if(dragMoved) return; chooseSub(n,selected); });
+      box.appendChild(b); subEls.push(b);
+    });
+  }
+  function updateMainEl(m){
+    var e=mainEls[m]; e.querySelector('.num').textContent=mainCounts[m]+' / '+mainTotals[m];
+    e.querySelector('.meter i').style.width=(mainCounts[m]/mainTotals[m]*100)+'%';
+    e.classList.remove('pop'); void e.offsetWidth; e.classList.add('pop');
+  }
+
+  // ---- Pages
+  function pageItems(p){return pageContents[p]||[];}
+  function leftOn(p){return pageItems(p).filter(function(i){return !i.done}).length;}
+  function renderTabs(){
+    $('pagelabel').textContent='Page '+(page+1)+' of '+pages;
+    $('prev').disabled=page===0; $('next').disabled=page===pages-1;
+  }
+  function renderPage(){
+    var g=$('grid'); g.innerHTML=''; slipEls={}; selected=-1;
+    pageItems(page).forEach(function(it){
+      var cell=document.createElement('div'); cell.className='cell'+(it.done?' empty':'');
+      if(!it.done){
+        var rr=it.rar;
+        var s=document.createElement('div'); s.className='slip'; s.style.setProperty('--r',it.r); s.style.setProperty('--rar',rr[1]);
+        s.innerHTML='<small>'+rr[0]+'</small><b>'+it.name+'</b>';
+        s._ox=0; s._oy=0; slipEls[it.id]=s; bindSlip(s,it.id); cell.appendChild(s);
+      }
+      g.appendChild(cell);
+    });
+    $('pagetitle').textContent='Unsorted page '+(page+1)+' of '+pages;
+    var left=leftOn(page); $('pageleft').textContent=left?(left+' left'):'All filed';
+    var old=$('sheet').querySelector('.cleared'); if(old) old.remove();
+    if(!left){var c=document.createElement('div'); c.className='cleared'; c.innerHTML='<span>Filed</span>'; $('sheet').appendChild(c);}
+    renderTabs();
+    updateAbility();
+  }
+  function goPage(p){ if(p<0||p>=pages) return; page=p; renderPage(); }
+  function nextOpenPage(){ for(var k=1;k<=pages;k++){var p=(page+k)%pages; if(leftOn(p)>0) return p;} return -1; }
+
+  function hud(){
+    $('copies').textContent=copiesFiled.toLocaleString(); $('streak').textContent=streak;
+    $('sortcoins').textContent=progress.sortCoins.toLocaleString();
+    $('completioncoins').textContent=progress.completionCoins.toLocaleString();
+    $('barfill').style.width=(copiesFiled/totalCopies*100)+'%';
+  }
+
+  function saveProgress(){
+    try{
+      localStorage.setItem(PROGRESS_KEY,JSON.stringify(progress));
+    }catch(error){
+      progressWarning='Progress could not be saved in this browser; coins and upgrades may not persist.';
+      console.error('Unable to save Cozy Sorter progress.',error);
+      say($('hint').textContent);
+    }
+  }
+  function loadProgress(){
+    try{
+      var saved=localStorage.getItem(PROGRESS_KEY);
+      if(!saved) return;
+      var data=JSON.parse(saved);
+      if(!data||!Number.isSafeInteger(data.sortCoins)||data.sortCoins<0||
+        !Number.isSafeInteger(data.completionCoins)||data.completionCoins<0||
+        !Number.isSafeInteger(data.summonLevel)||data.summonLevel<0){
+        throw new Error('Saved progress is invalid.');
+      }
+      progress={sortCoins:data.sortCoins,completionCoins:data.completionCoins,summonLevel:data.summonLevel};
+    }catch(error){
+      progress={sortCoins:0,completionCoins:0,summonLevel:0};
+      progressWarning='Saved progress could not be read; starting with 0 coins and no upgrades.';
+      console.error('Unable to read Cozy Sorter progress.',error);
+    }
+  }
+  function summonCost(){return progress.summonLevel===0?3:3+progress.summonLevel*2;}
+  function selectedItem(){return selected>=0&&slipEls[selected]&&!items[selected].done?items[selected]:null;}
+  function summonableCopies(it){
+    if(!it||!progress.summonLevel) return 0;
+    var openSlots=pageItems(page).filter(function(item){return !item.done&&!item._flying&&item.typeId!==it.typeId}).length;
+    var offPage=items.filter(function(item){return !item.done&&item.page!==page&&item.typeId===it.typeId}).length;
+    return Math.min(progress.summonLevel,openSlots,offPage);
+  }
+  function updateAbility(){
+    var it=selectedItem(), level=progress.summonLevel, cost=summonCost();
+    $('summonlevel').textContent=level?'Lv. '+level:'Locked';
+    $('summondesc').textContent=level?'Each summon pulls up to '+level+' matching unsorted item'+(level===1?'':'s')+' onto this page.':'Select an item, then summon matching copies onto this page.';
+    $('upgrade').textContent=(level?'Upgrade':'Unlock')+' · '+cost+' Completion Coin'+(cost===1?'':'s');
+    $('upgrade').disabled=progress.completionCoins<cost;
+    $('summon').textContent=level?'Summon ×'+level:'Summon';
+    $('summon').disabled=!it||summonableCopies(it)===0;
+  }
+
+  // ---- Choosing
+  function select(id){
+    if(selected>=0&&slipEls[selected]) slipEls[selected].classList.remove('sel');
+    selected=(id>=0&&selected!==id)?id:-1;
+    if(selected>=0&&slipEls[selected]) slipEls[selected].classList.add('sel');
+    updateAbility();
+  }
+  function miss(it,el,msg){
+    attempted[it.id]=true; streak=0; nope(); hud(); say(msg); if(el) shake(el);
+  }
+  function chooseMain(m,id){
+    if(finished) return;
+    if(id<0||!slipEls[id]||items[id].done){ openMain=m; renderTray(); say('Pick an item from the page first, then choose where it goes.'); return; }
+    var it=items[id], el=slipEls[id];
+    if(!startedAt) startedAt=Date.now();
+    if(it.main===m){
+      openMain=m; renderTray(); ding();
+      if(selected!==id){ if(selected>=0&&slipEls[selected]) slipEls[selected].classList.remove('sel'); selected=id; el.classList.add('sel'); }
+      updateAbility();
+      say(it.name+' goes in '+TREE[m].name+'. Now pick the folder ('+SUB_KEYS.join(', ')+').');
+      settle(el);
+    } else {
+      miss(it,el,it.name+' doesn’t go in '+TREE[m].name+'. Try another drawer.');
+    }
+  }
+  function chooseSub(s,id){
+    if(finished) return;
+    if(id<0||!slipEls[id]||items[id].done){ say('Pick an item from the page first.'); return; }
+    var it=items[id], el=slipEls[id];
+    if(el._flying) return;
+    if(!startedAt) startedAt=Date.now();
+    if(it.main!==openMain){ miss(it,el,it.name+' doesn’t go in '+TREE[openMain].name+'. Open another drawer.'); return; }
+    if(it.sub!==s){ miss(it,el,'Right drawer, wrong folder. Try another one.'); return; }
+    if(!attempted[id]) firstTry++;
+    streak++; best=Math.max(best,streak); plop(); fly(it,el,subEls[s]);
+  }
+
+  function settle(el){
+    var from='translate('+el._ox+'px,'+el._oy+'px)';
+    if(el._ox||el._oy) el.animate([{transform:from},{transform:'translate(0,0)'}],{duration:260,easing:'cubic-bezier(.3,1.4,.5,1)'});
+    el._ox=el._oy=0; el.style.transform='';
+  }
+  function shake(el){
+    settle(el);
+    el.animate([{rotate:'0deg'},{rotate:'-6deg'},{rotate:'5deg'},{rotate:'-3deg'},{rotate:'0deg'}],{duration:420});
+  }
+  var PRAISE=['Nice.','Tidy.','Mmm, cozy.','Smooth.','Just right.','Lovely.'];
+  function fly(it,el,target){
+    el._flying=true; el.classList.remove('sel'); if(selected===it.id) selected=-1;
+    var r=el.getBoundingClientRect(), dr=target.getBoundingClientRect();
+    var dx=dr.left+dr.width/2-(r.left+r.width/2), dy=dr.top+dr.height*0.4-(r.top+r.height/2);
+    el.style.zIndex=60;
+    var a=el.animate([
+      {transform:'translate('+el._ox+'px,'+el._oy+'px) scale(1)',opacity:1},
+      {transform:'translate('+(el._ox+dx)+'px,'+(el._oy+dy-24)+'px) scale(.6)',opacity:1,offset:.7},
+      {transform:'translate('+(el._ox+dx)+'px,'+(el._oy+dy)+'px) scale(.2)',opacity:0}
+    ],{duration:400,easing:'cubic-bezier(.4,0,.6,1)',fill:'forwards'});
+    a.onfinish=function(){
+      it.done=true; copiesFiled++; stacksFiled=copiesFiled;
+      progress.sortCoins++;
+      typeFiled[it.typeId]++;
+      var completedType=typeFiled[it.typeId]===typeTotals[it.typeId];
+      if(completedType) progress.completionCoins++;
+      saveProgress();
+      mainCounts[it.main]++; subCounts[it.main][it.sub]++;
+      updateMainEl(it.main);
+      if(openMain===it.main){
+        var sb=subEls[it.sub]; sb.querySelector('.num').textContent=subCounts[it.main][it.sub]+' / '+subTotals[it.main][it.sub];
+        sb.querySelector('.meter i').style.width=(subCounts[it.main][it.sub]/subTotals[it.main][it.sub]*100)+'%';
+        sb.classList.remove('pop'); void sb.offsetWidth; sb.classList.add('pop');
+      }
+      hud();
+      if(slipEls[it.id]===el){ var cell=el.parentNode; el.remove(); if(cell) cell.classList.add('empty'); delete slipEls[it.id]; }
+      var msg=it.name+' filed under '+TREE[it.main].name+' › '+TREE[it.main].subs[it.sub].name+'. +1 Sortcoin.';
+      if(completedType) msg+=' Full stack complete: +1 Completion Coin!';
+      if(streak>0&&streak%5===0) msg+=' '+streak+' in a row.'; else msg+=' '+PRAISE[stacksFiled%PRAISE.length];
+      say(msg);
+      var left=leftOn(page);
+      $('pageleft').textContent=left?(left+' left'):'All filed';
+      renderTabs();
+      updateAbility();
+      if(stacksFiled>=items.length){ finish(); return; }
+      if(left===0){
+        pageDone();
+        var c=document.createElement('div'); c.className='cleared'; c.innerHTML='<span>Filed</span>'; $('sheet').appendChild(c);
+        var np=nextOpenPage();
+        setTimeout(function(){ if(!finished&&np>=0&&leftOn(page)===0) goPage(np); },900);
+      }
+    };
+  }
+
+  // ---- Drag
+  function bindSlip(el,id){
+    var sx,sy,active=false;
+    el.addEventListener('pointerdown',function(e){
+      if(el._flying||finished) return;
+      active=true; dragMoved=false; sx=e.clientX-el._ox; sy=e.clientY-el._oy; el.setPointerCapture(e.pointerId); el.classList.add('drag');
+    });
+    el.addEventListener('pointermove',function(e){
+      if(!active) return;
+      var nx=e.clientX-sx, ny=e.clientY-sy;
+      if(Math.abs(nx-el._ox)+Math.abs(ny-el._oy)>3) dragMoved=true;
+      el._ox=nx; el._oy=ny; el.style.transform='translate('+nx+'px,'+ny+'px)';
+      var h=hit(e.clientX,e.clientY);
+      mainEls.forEach(function(d,k){d.classList.toggle('over',!!h&&h.type==='main'&&h.idx===k)});
+      subEls.forEach(function(d,k){d.classList.toggle('over',!!h&&h.type==='sub'&&h.idx===k)});
+    });
+    function end(e){
+      if(!active) return; active=false; el.classList.remove('drag');
+      mainEls.concat(subEls).forEach(function(d){d.classList.remove('over')});
+      if(dragMoved){
+        var h=hit(e.clientX,e.clientY);
+        if(h&&h.type==='main') chooseMain(h.idx,id);
+        else if(h&&h.type==='sub') chooseSub(h.idx,id);
+        else settle(el);
+      } else { select(id); }
+      setTimeout(function(){dragMoved=false},0);
+    }
+    el.addEventListener('pointerup',end);
+    el.addEventListener('pointercancel',end);
+  }
+  function hit(x,y){
+    var k,r;
+    for(k=0;k<subEls.length;k++){r=subEls[k].getBoundingClientRect(); if(x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom) return {type:'sub',idx:k};}
+    for(k=0;k<mainEls.length;k++){r=mainEls[k].getBoundingClientRect(); if(x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom) return {type:'main',idx:k};}
+    return null;
+  }
+
+  function currentId(){
+    if(selected>=0&&slipEls[selected]) return selected;
+    var f=pageItems(page).filter(function(i){return !i.done})[0];
+    if(!f) return -1;
+    selected=f.id; slipEls[f.id].classList.add('sel'); updateAbility(); return f.id;
+  }
+  function summonSelected(){
+    var it=selectedItem(), amount=summonableCopies(it);
+    if(!it||!amount) return;
+    var moved=0;
+    for(var n=0;n<amount;n++){
+      var source=items.find(function(candidate){return !candidate.done&&candidate.page!==page&&candidate.typeId===it.typeId});
+      var displaced=pageItems(page).find(function(candidate){return !candidate.done&&!candidate._flying&&candidate.typeId!==it.typeId});
+      if(!source||!displaced) break;
+      var sourcePage=source.page;
+      var currentPageItems=pageItems(page), sourcePageItems=pageItems(sourcePage);
+      var currentIndex=currentPageItems.indexOf(displaced), sourceIndex=sourcePageItems.indexOf(source);
+      if(currentIndex<0||sourceIndex<0) break;
+      currentPageItems[currentIndex]=source;
+      sourcePageItems[sourceIndex]=displaced;
+      source.page=page;
+      displaced.page=sourcePage;
+      moved++;
+    }
+    renderPage();
+    say('Summoned '+moved+' more '+it.name+' onto this page.');
+  }
+  document.addEventListener('keydown',function(e){
+    if(e.ctrlKey||e.metaKey||e.altKey) return;
+    var k=e.key;
+    if(k>='1'&&k<='7'){ var id=currentId(); chooseMain(parseInt(k,10)-1,id); }
+    else {
+      var si=SUB_KEYS.indexOf(k.toUpperCase());
+      if(si>=0&&k.length===1){ var id2=currentId(); chooseSub(si,id2); }
+      else if(k==='ArrowLeft') goPage(page-1);
+      else if(k==='ArrowRight') goPage(page+1);
+    }
+  });
+  $('prev').addEventListener('click',function(){goPage(page-1)});
+  $('next').addEventListener('click',function(){goPage(page+1)});
+  $('summon').addEventListener('click',summonSelected);
+  $('upgrade').addEventListener('click',function(){
+    var cost=summonCost();
+    if(progress.completionCoins<cost){say('You need '+cost+' Completion Coins to '+(progress.summonLevel?'upgrade':'unlock')+' Item Summon.');return;}
+    progress.completionCoins-=cost;
+    progress.summonLevel++;
+    saveProgress(); hud(); updateAbility();
+    say('Item Summon upgraded to level '+progress.summonLevel+'.');
+  });
+
+  // ---- Finish & restart
+  function fmt(ms){var s=Math.round(ms/1000);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');}
+  function finish(){
+    finished=true; chime();
+    $('endsub').textContent='All '+items.length.toLocaleString()+' items are filed across 7 drawers and 28 folders.';
+    $('s-items').textContent=copiesFiled.toLocaleString();
+    $('s-time').textContent=fmt(Date.now()-startedAt);
+    $('s-acc').textContent=Math.round(firstTry/items.length*100)+'%';
+    $('s-best').textContent=best;
+    $('end').hidden=false; $('again').focus();
+  }
+  function start(){
+    streak=0;best=0;firstTry=0;stacksFiled=0;copiesFiled=0;startedAt=0;selected=-1;finished=false;attempted={};page=0;openMain=0;
+    build();
+    $('totalcopies').textContent=totalCopies.toLocaleString();    $('end').hidden=true;
+    buildMains(); renderTray(); hud(); renderPage();
+    say('Drag an item onto its drawer, then its folder. With the right drawer already open, drop it straight on the folder. Keys: 1–7, then A S D F.');
+  }
+  loadProgress();
+  $('restart').addEventListener('click',start);
+  $('again').addEventListener('click',start);
+  $('mute').addEventListener('click',function(){muted=!muted;this.textContent=muted?'Sound off':'Sound on';this.setAttribute('aria-pressed',String(muted));});
+  start();
+})();
+</script>
+
+</body></html>
