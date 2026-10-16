@@ -4,6 +4,8 @@ Open `Cozy Sorter.html` in a modern browser to play.
 
 Each sorted item earns 1 Sortcoin. Completing all copies of an item type earns 1 Completion Coin. Coin balances and upgrades are saved in browser storage.
 
+Item rarity is based on the number of copies in its stack: 4 is Legendary, 5 is Epic, 6–8 are Rare, 9–13 are Uncommon, and 14 or more are Common.
+
 ## Item Summon
 
 Select an unsorted item on the current page and choose **Summon** to move matching unsorted copies from other pages onto this page. It does not create extra items. Unlock Item Summon for 3 Completion Coins. Each level summons one additional matching copy per activation; the first upgrade costs 5 Completion Coins, and each later upgrade costs 2 more than the previous one.

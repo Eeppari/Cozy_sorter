@@ -72,10 +72,12 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
 .cell.empty{border:2px dashed var(--line);opacity:.6}
 .slip{--rar:#9aa79c;position:relative;z-index:1;background:var(--panel);border:1.5px solid var(--line);border-left:5px solid var(--rar);border-radius:8px;padding:8px 10px;min-height:78px;display:flex;flex-direction:column;justify-content:center;gap:1px;
   box-shadow:0 2px 0 var(--line),0 10px 12px var(--shadow);cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;rotate:var(--r,0deg)}
-.slip small{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:800}
+.slip small{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--rar);font-weight:800}
 .slip b{font-family:var(--font-display);font-size:15px;font-weight:700;line-height:1.15;overflow-wrap:anywhere}
 .slip .cnt{position:absolute;right:8px;top:6px;font-style:normal;font-weight:800;font-size:14px;color:var(--ink);font-variant-numeric:tabular-nums}
 .slip.sel{box-shadow:0 0 0 3px var(--accent),0 10px 12px var(--shadow)}
+.slip.legendary{border-color:#d5a531;box-shadow:0 2px 0 #d5a531,0 10px 12px var(--shadow),0 0 12px rgba(201,138,46,.28)}
+.slip.legendary.sel{box-shadow:0 0 0 3px var(--accent),0 10px 12px var(--shadow)}
 .slip.drag{cursor:grabbing;z-index:50;scale:1.06}
 .slip:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .cleared{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;border-radius:inherit}
@@ -245,7 +247,7 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
   var SUB_KEYS = ['A','S','D','F'];
 
   function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
-  function rarity(n){ return n<=5?['Epic','#a074c9'] : n<=8?['Rare','#5b8fc9'] : n<=13?['Uncommon','#6fae6f'] : ['Common','#9aa79c']; }
+  function rarity(n){ return n<=4?['Legendary','#d5a531'] : n<=5?['Epic','#a074c9'] : n<=8?['Rare','#5b8fc9'] : n<=13?['Uncommon','#6fae6f'] : ['Common','#9aa79c']; }
 
   var $=function(id){return document.getElementById(id)};
   var items=[], pageContents=[], pages=0, page=0, streak=0, best=0, firstTry=0, stacksFiled=0, copiesFiled=0, totalCopies=0, startedAt=0;
@@ -336,7 +338,7 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
       var cell=document.createElement('div'); cell.className='cell'+(it.done?' empty':'');
       if(!it.done){
         var rr=it.rar;
-        var s=document.createElement('div'); s.className='slip'; s.style.setProperty('--r',it.r); s.style.setProperty('--rar',rr[1]);
+        var s=document.createElement('div'); s.className='slip'+(rr[0]==='Legendary'?' legendary':''); s.style.setProperty('--r',it.r); s.style.setProperty('--rar',rr[1]);
         s.tabIndex=0; s.setAttribute('role','checkbox'); s.setAttribute('aria-checked','false');
         s.innerHTML='<small>'+rr[0]+'</small><b>'+it.name+'</b>';
         s._ox=0; s._oy=0; slipEls[it.id]=s; bindSlip(s,it.id); cell.appendChild(s);
