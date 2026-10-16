@@ -77,6 +77,7 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
 .slip .cnt{position:absolute;right:8px;top:6px;font-style:normal;font-weight:800;font-size:14px;color:var(--ink);font-variant-numeric:tabular-nums}
 .slip.sel{box-shadow:0 0 0 3px var(--accent),0 10px 12px var(--shadow)}
 .slip.drag{cursor:grabbing;z-index:50;scale:1.06}
+.slip:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .cleared{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;border-radius:inherit}
 .cleared span{font-family:var(--font-display);font-size:clamp(26px,6vw,38px);font-weight:700;color:var(--accent);border:4px solid var(--accent);border-radius:12px;padding:4px 18px;rotate:-6deg;opacity:.9;background:var(--paper)}
 
@@ -106,6 +107,7 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
 .abilityactions{display:flex;gap:6px;flex:0 0 auto}
 .abilityactions button{background:var(--paper);border:1.5px solid var(--line);border-radius:999px;padding:6px 10px;color:var(--ink);font:inherit;font-size:12px;font-weight:800;cursor:pointer}
 .abilityactions button:disabled{opacity:.45;cursor:default}
+.ability:last-child{border-bottom:0}
 @keyframes jiggle{0%{transform:scale(1)}30%{transform:scale(1.07,.94)}60%{transform:scale(.97,1.04)}100%{transform:scale(1)}}
 @media (max-width:560px){
   .mains{grid-template-columns:repeat(4,minmax(0,1fr))}
@@ -167,6 +169,10 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
         <div class="abilitycopy"><b>Item Summon <span id="summonlevel">Locked</span></b><span id="summondesc">Select an item, then summon matching copies onto this page.</span></div>
         <div class="abilityactions"><button id="summon" type="button" disabled>Summon</button><button id="upgrade" type="button">Unlock · 3 Completion Coins</button></div>
       </div>
+      <div class="ability">
+        <div class="abilitycopy"><b>Multi-select <span id="multiselectlevel">Locked</span></b><span id="multiselectdesc">Unlock to select and file matching items together.</span></div>
+        <div class="abilityactions"><button id="multiselectupgrade" type="button">Unlock · 20 Sortcoins</button></div>
+      </div>
     </div>
   </div>
 </div>
@@ -187,7 +193,7 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
 
 <script>
 (function(){
-  var PER_PAGE = 20;
+  var PER_PAGE = 24;
   var MIN_COPIES = 4, MAX_COPIES = 30;
   var PROGRESS_KEY = 'cozy-sorter-progress-v1';
 
@@ -243,9 +249,9 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
 
   var $=function(id){return document.getElementById(id)};
   var items=[], pageContents=[], pages=0, page=0, streak=0, best=0, firstTry=0, stacksFiled=0, copiesFiled=0, totalCopies=0, startedAt=0;
-  var selected=-1, openMain=0, finished=false, dragMoved=false, muted=false, attempted={};
+  var selected=-1, selectedIds=[], openMain=0, finished=false, dragMoved=false, muted=false, attempted={};
   var slipEls={}, mainEls=[], subEls=[], mainCounts=[], subCounts=[], mainTotals=[], subTotals=[];
-  var progress={sortCoins:0,completionCoins:0,summonLevel:0}, typeTotals=[], typeFiled=[], nextTypeId=0;
+  var progress={sortCoins:0,completionCoins:0,summonLevel:0,multiSelectLevel:0}, typeTotals=[], typeFiled=[], nextTypeId=0;
 
   // ---- Sound
   var ac=null;
@@ -325,12 +331,13 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
     $('prev').disabled=page===0; $('next').disabled=page===pages-1;
   }
   function renderPage(){
-    var g=$('grid'); g.innerHTML=''; slipEls={}; selected=-1;
+    var g=$('grid'); g.innerHTML=''; slipEls={}; selected=-1; selectedIds=[];
     pageItems(page).forEach(function(it){
       var cell=document.createElement('div'); cell.className='cell'+(it.done?' empty':'');
       if(!it.done){
         var rr=it.rar;
         var s=document.createElement('div'); s.className='slip'; s.style.setProperty('--r',it.r); s.style.setProperty('--rar',rr[1]);
+        s.tabIndex=0; s.setAttribute('role','checkbox'); s.setAttribute('aria-checked','false');
         s.innerHTML='<small>'+rr[0]+'</small><b>'+it.name+'</b>';
         s._ox=0; s._oy=0; slipEls[it.id]=s; bindSlip(s,it.id); cell.appendChild(s);
       }
@@ -351,6 +358,7 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
     $('sortcoins').textContent=progress.sortCoins.toLocaleString();
     $('completioncoins').textContent=progress.completionCoins.toLocaleString();
     $('barfill').style.width=(copiesFiled/totalCopies*100)+'%';
+    updateMultiSelect();
   }
 
   function saveProgress(){
@@ -369,12 +377,13 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
       var data=JSON.parse(saved);
       if(!data||!Number.isSafeInteger(data.sortCoins)||data.sortCoins<0||
         !Number.isSafeInteger(data.completionCoins)||data.completionCoins<0||
-        !Number.isSafeInteger(data.summonLevel)||data.summonLevel<0){
+        !Number.isSafeInteger(data.summonLevel)||data.summonLevel<0||
+        (data.multiSelectLevel!==undefined&&(!Number.isSafeInteger(data.multiSelectLevel)||data.multiSelectLevel<0||data.multiSelectLevel>PER_PAGE-1))){
         throw new Error('Saved progress is invalid.');
       }
-      progress={sortCoins:data.sortCoins,completionCoins:data.completionCoins,summonLevel:data.summonLevel};
+      progress={sortCoins:data.sortCoins,completionCoins:data.completionCoins,summonLevel:data.summonLevel,multiSelectLevel:data.multiSelectLevel||0};
     }catch(error){
-      progress={sortCoins:0,completionCoins:0,summonLevel:0};
+      progress={sortCoins:0,completionCoins:0,summonLevel:0,multiSelectLevel:0};
       progressWarning='Saved progress could not be read; starting with 0 coins and no upgrades.';
       console.error('Unable to read Cozy Sorter progress.',error);
     }
@@ -387,6 +396,18 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
     var offPage=items.filter(function(item){return !item.done&&item.page!==page&&item.typeId===it.typeId}).length;
     return Math.min(progress.summonLevel,openSlots,offPage);
   }
+  function multiSelectCost(){
+    return Math.ceil(20*Math.pow(1.5,progress.multiSelectLevel));
+  }
+  function updateMultiSelect(){
+    var level=progress.multiSelectLevel, cost=multiSelectCost();
+    $('multiselectlevel').textContent=level?'Lv. '+level:'Locked';
+    $('multiselectdesc').textContent=level?
+      'Click up to '+(level+1)+' items, then choose their shared folder.':
+      'Unlock to click-select multiple items and file them together.';
+    $('multiselectupgrade').textContent=level?'Upgrade · '+cost+' Sortcoins':'Unlock · '+cost+' Sortcoins';
+    $('multiselectupgrade').disabled=level>=PER_PAGE-1||progress.sortCoins<cost;
+  }
   function updateAbility(){
     var it=selectedItem(), level=progress.summonLevel, cost=summonCost();
     $('summonlevel').textContent=level?'Lv. '+level:'Locked';
@@ -395,43 +416,85 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
     $('upgrade').disabled=progress.completionCoins<cost;
     $('summon').textContent=level?'Summon ×'+level:'Summon';
     $('summon').disabled=!it||summonableCopies(it)===0;
+    updateMultiSelect();
   }
 
   // ---- Choosing
   function select(id){
-    if(selected>=0&&slipEls[selected]) slipEls[selected].classList.remove('sel');
-    selected=(id>=0&&selected!==id)?id:-1;
-    if(selected>=0&&slipEls[selected]) slipEls[selected].classList.add('sel');
+    var index=selectedIds.indexOf(id);
+    if(index>=0){
+      if(slipEls[id]){slipEls[id].classList.remove('sel');slipEls[id].setAttribute('aria-checked','false');}
+      selectedIds.splice(index,1);
+    }else if(id>=0&&slipEls[id]){
+      var limit=progress.multiSelectLevel+1;
+      if(selectedIds.length>=limit){
+        say('Multi-select is limited to '+limit+' items. Upgrade to select more.');
+        return;
+      }
+      if(!progress.multiSelectLevel){
+        selectedIds.forEach(function(selectedId){
+          if(slipEls[selectedId]){
+            slipEls[selectedId].classList.remove('sel');
+            slipEls[selectedId].setAttribute('aria-checked','false');
+          }
+        });
+        selectedIds=[];
+      }
+      selectedIds.push(id);
+      slipEls[id].classList.add('sel');
+      slipEls[id].setAttribute('aria-checked','true');
+    }
+    selected=selectedIds.length?selectedIds[0]:-1;
     updateAbility();
+    if(selectedIds.length){
+      say(selectedIds.length+' item'+(selectedIds.length===1?'':'s')+' selected. Choose the drawer, then '+(selectedIds.length===1?'its':'their shared')+' folder.');
+    }else{
+      say('Selection cleared.');
+    }
+  }
+  function targetIds(id){
+    var ids=selectedIds.filter(function(selectedId){return slipEls[selectedId]&&!items[selectedId].done&&!slipEls[selectedId]._flying;});
+    if(id>=0&&ids.indexOf(id)<0&&slipEls[id]&&!items[id].done&&!slipEls[id]._flying) return [id];
+    return ids;
+  }
+  function missBatch(ids,msg){
+    ids.forEach(function(id){attempted[id]=true; if(slipEls[id]) shake(slipEls[id]);});
+    streak=0; nope(); hud(); say(msg);
   }
   function miss(it,el,msg){
     attempted[it.id]=true; streak=0; nope(); hud(); say(msg); if(el) shake(el);
   }
   function chooseMain(m,id){
     if(finished) return;
-    if(id<0||!slipEls[id]||items[id].done){ openMain=m; renderTray(); say('Pick an item from the page first, then choose where it goes.'); return; }
-    var it=items[id], el=slipEls[id];
+    var ids=targetIds(id);
+    if(!ids.length){ openMain=m; renderTray(); say('Pick an item from the page first, then choose where it goes.'); return; }
+    var matches=ids.every(function(itemId){return items[itemId].main===m;});
     if(!startedAt) startedAt=Date.now();
-    if(it.main===m){
-      openMain=m; renderTray(); ding();
-      if(selected!==id){ if(selected>=0&&slipEls[selected]) slipEls[selected].classList.remove('sel'); selected=id; el.classList.add('sel'); }
-      updateAbility();
-      say(it.name+' goes in '+TREE[m].name+'. Now pick the folder ('+SUB_KEYS.join(', ')+').');
-      settle(el);
-    } else {
-      miss(it,el,it.name+' doesn’t go in '+TREE[m].name+'. Try another drawer.');
+    if(matches){
+      openMain=m; renderTray(); ding(); updateAbility();
+      ids.forEach(function(itemId){settle(slipEls[itemId]);});
+      say(ids.length+' selected item'+(ids.length===1?'':'s')+' go in '+TREE[m].name+'. Now pick the folder ('+SUB_KEYS.join(', ')+').');
+    }else{
+      missBatch(ids,'Selected items don’t all go in '+TREE[m].name+'. Choose items from the same drawer.');
     }
   }
   function chooseSub(s,id){
     if(finished) return;
-    if(id<0||!slipEls[id]||items[id].done){ say('Pick an item from the page first.'); return; }
-    var it=items[id], el=slipEls[id];
-    if(el._flying) return;
+    var ids=targetIds(id);
+    if(!ids.length){ say('Pick an item from the page first.'); return; }
     if(!startedAt) startedAt=Date.now();
-    if(it.main!==openMain){ miss(it,el,it.name+' doesn’t go in '+TREE[openMain].name+'. Open another drawer.'); return; }
-    if(it.sub!==s){ miss(it,el,'Right drawer, wrong folder. Try another one.'); return; }
-    if(!attempted[id]) firstTry++;
-    streak++; best=Math.max(best,streak); plop(); fly(it,el,subEls[s]);
+    if(!ids.every(function(itemId){return items[itemId].main===openMain;})){
+      missBatch(ids,'Selected items don’t all go in '+TREE[openMain].name+'. Open the right drawer or select items from one drawer.');
+      return;
+    }
+    if(!ids.every(function(itemId){return items[itemId].sub===s;})){
+      missBatch(ids,'Selected items don’t all belong in this folder. Choose items that share a folder.');
+      return;
+    }
+    ids.forEach(function(itemId){if(!attempted[itemId]) firstTry++;});
+    streak+=ids.length; best=Math.max(best,streak); plop();
+    selectedIds=[]; selected=-1;
+    ids.forEach(function(itemId){fly(items[itemId],slipEls[itemId],subEls[s]);});
   }
 
   function settle(el){
@@ -445,7 +508,7 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
   }
   var PRAISE=['Nice.','Tidy.','Mmm, cozy.','Smooth.','Just right.','Lovely.'];
   function fly(it,el,target){
-    el._flying=true; el.classList.remove('sel'); if(selected===it.id) selected=-1;
+    el._flying=true; el.classList.remove('sel');
     var r=el.getBoundingClientRect(), dr=target.getBoundingClientRect();
     var dx=dr.left+dr.width/2-(r.left+r.width/2), dy=dr.top+dr.height*0.4-(r.top+r.height/2);
     el.style.zIndex=60;
@@ -508,15 +571,23 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
       if(!active) return; active=false; el.classList.remove('drag');
       mainEls.concat(subEls).forEach(function(d){d.classList.remove('over')});
       if(dragMoved){
+        el._suppressClick=true;
         var h=hit(e.clientX,e.clientY);
         if(h&&h.type==='main') chooseMain(h.idx,id);
         else if(h&&h.type==='sub') chooseSub(h.idx,id);
         else settle(el);
-      } else { select(id); }
-      setTimeout(function(){dragMoved=false},0);
+      }
+      setTimeout(function(){dragMoved=false;el._suppressClick=false},0);
     }
     el.addEventListener('pointerup',end);
     el.addEventListener('pointercancel',end);
+    el.addEventListener('click',function(){
+      if(el._suppressClick||finished) return;
+      select(id);
+    });
+    el.addEventListener('keydown',function(e){
+      if(e.key==='Enter'||e.key===' '){e.preventDefault();select(id);}
+    });
   }
   function hit(x,y){
     var k,r;
@@ -526,10 +597,10 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
   }
 
   function currentId(){
-    if(selected>=0&&slipEls[selected]) return selected;
+    if(selectedIds.length&&slipEls[selectedIds[0]]) return selectedIds[0];
     var f=pageItems(page).filter(function(i){return !i.done})[0];
     if(!f) return -1;
-    selected=f.id; slipEls[f.id].classList.add('sel'); updateAbility(); return f.id;
+    select(f.id); return f.id;
   }
   function summonSelected(){
     var it=selectedItem(), amount=summonableCopies(it);
@@ -573,6 +644,14 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
     progress.summonLevel++;
     saveProgress(); hud(); updateAbility();
     say('Item Summon upgraded to level '+progress.summonLevel+'.');
+  });
+  $('multiselectupgrade').addEventListener('click',function(){
+    var cost=multiSelectCost();
+    if(progress.multiSelectLevel>=PER_PAGE-1||progress.sortCoins<cost) return;
+    progress.sortCoins-=cost;
+    progress.multiSelectLevel++;
+    saveProgress(); hud(); updateAbility();
+    say('Multi-select upgraded to level '+progress.multiSelectLevel+'. You can now select up to '+(progress.multiSelectLevel+1)+' items.');
   });
 
   // ---- Finish & restart

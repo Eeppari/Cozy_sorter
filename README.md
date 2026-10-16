@@ -2,8 +2,12 @@
 
 Open `Cozy Sorter.html` in a modern browser to play.
 
-Each sorted item earns 1 Sortcoin. Completing all copies of an item type earns 1 Completion Coin. Coin balances and Item Summon upgrades are saved in browser storage; Sortcoins are currently collected but are not spent.
+Each sorted item earns 1 Sortcoin. Completing all copies of an item type earns 1 Completion Coin. Coin balances and upgrades are saved in browser storage.
 
 ## Item Summon
 
 Select an unsorted item on the current page and choose **Summon** to move matching unsorted copies from other pages onto this page. It does not create extra items. Unlock Item Summon for 3 Completion Coins. Each level summons one additional matching copy per activation; the first upgrade costs 5 Completion Coins, and each later upgrade costs 2 more than the previous one.
+
+## Multi-select
+
+Pages contain 24 items. Unlock Multi-select for 20 Sortcoins to click-select 2 items at once. Each upgrade adds one selection slot, up to 24 items, and costs 1.5 times the previous level's price, rounded up (20, 30, 45, 68, ...). Selected items must all belong in the same folder to file them together.
