@@ -474,6 +474,23 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
     if(id>=0&&ids.indexOf(id)<0&&slipEls[id]&&!items[id].done&&!slipEls[id]._flying) return [id];
     return ids;
   }
+  function quickSelectSameType(){
+    var anchor=selectedItem();
+    if(!anchor) return;
+    var limit=progress.multiSelectLevel+1;
+    var matches=pageItems(page).filter(function(it){return !it.done&&!slipEls[it.id]._flying&&it.typeId===anchor.typeId;});
+    selectedIds.forEach(function(id){
+      if(slipEls[id]){slipEls[id].classList.remove('sel');slipEls[id].setAttribute('aria-checked','false');}
+    });
+    selectedIds=matches.slice(0,limit).map(function(it){return it.id;});
+    selectedIds.forEach(function(id){
+      slipEls[id].classList.add('sel');
+      slipEls[id].setAttribute('aria-checked','true');
+    });
+    selected=selectedIds.length?selectedIds[0]:-1;
+    updateAbility();
+    say('Quick-selected '+selectedIds.length+' of '+matches.length+' '+anchor.name+' on this page'+(matches.length>limit?' (Multi-select limit: '+limit+').':'.'));
+  }
   function missBatch(ids,msg){
     ids.forEach(function(id){attempted[id]=true; if(slipEls[id]) shake(slipEls[id]);});
     streak=0; nope(); hud(); say(msg);
@@ -641,6 +658,10 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
     say('Summoned '+moved+' more '+it.name+' onto this page.');
   }
   document.addEventListener('keydown',function(e){
+    if(e.ctrlKey&&!e.metaKey&&!e.altKey&&e.key.toLowerCase()==='a'){
+      if(selectedItem()){e.preventDefault();quickSelectSameType();}
+      return;
+    }
     if(e.ctrlKey||e.metaKey||e.altKey) return;
     var k=e.key;
     if(k>='1'&&k<='7'){ var id=currentId(); chooseMain(parseInt(k,10)-1,id); }
@@ -687,7 +708,7 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
     build();
     $('totalcopies').textContent=totalCopies.toLocaleString();    $('end').hidden=true;
     buildMains(); renderTray(); hud(); renderPage();
-    say('Drag an item onto its drawer, then its folder. With the right drawer already open, drop it straight on the folder. Keys: 1–7, then A S D F.');
+    say('Drag an item onto its drawer, then its folder. With the right drawer already open, drop it straight on the folder. Keys: 1–7, then A S D F. Select an item and press Ctrl+A to select matching copies up to your Multi-select limit.');
   }
   loadProgress();
   $('restart').addEventListener('click',start);

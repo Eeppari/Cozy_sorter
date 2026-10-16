@@ -13,3 +13,5 @@ Select an unsorted item on the current page and choose **Summon** to move matchi
 ## Multi-select
 
 Pages contain 24 items. Unlock Multi-select for 20 Sortcoins to click-select 2 items at once. Each upgrade adds one selection slot, up to 24 items, and costs 1.5 times the previous level's price, rounded up (20, 30, 45, 68, ...). Selected items must all belong in the same folder to file them together.
+
+Select an item and press **Ctrl+A** to quickly select copies of that same item on the current page, up to your Multi-select limit.
