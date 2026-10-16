@@ -4,7 +4,7 @@ Open `Cozy Sorter.html` in a modern browser to play.
 
 Each sorted item earns 1 Sortcoin. Completing all copies of an item type earns 1 Completion Coin. Coin balances and upgrades are saved in browser storage.
 
-Item rarity is based on the number of copies in its stack: 4 is Legendary, 5 is Epic, 6–8 are Rare, 9–13 are Uncommon, and 14 or more are Common.
+Item rarity is based on the stack's percentile within the configured copy-count range. The rarity tier weights are 1:1:3:5:17 (Legendary, Epic, Rare, Uncommon, Common); the game scales these proportions across `MIN_COPIES` to `MAX_COPIES`, so changing the stack-size range automatically adjusts the copy-count cutoffs.
 
 ## Item Summon
 
